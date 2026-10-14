@@ -1,6 +1,8 @@
 """Meal tools: record, list, search, correct and delete meals."""
 from typing import Annotated, Literal
 
+from pydantic import BeforeValidator, WithJsonSchema
+
 import db
 import days
 from days import NutritionError
@@ -9,17 +11,57 @@ from tools.day import day_status
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack", "drink"]
 
-Kcal = Annotated[float, doc("Energy in kcal (total of the meal; from food_nutrition's total).")]
-Protein = Annotated[float, doc("Protein in g (total of the meal).")]
-Carbs = Annotated[float, doc("Carbohydrates in g (total of the meal).")]
-Fat = Annotated[float, doc("Fat in g (total of the meal).")]
+Kcal = Annotated[float, doc("Required. Energy in kcal of the whole meal ('kcal' of "
+                            "food_nutrition's total).")]
+Protein = Annotated[float, doc("Required. Protein in g of the whole meal ('protein_g' of the "
+                               "total).")]
+Carbs = Annotated[float, doc("Required. Carbohydrates in g of the whole meal ('carbs_g' of the "
+                             "total; 0 if there are none).")]
+Fat = Annotated[float, doc("Required. Fat in g of the whole meal ('fat_g' of the total; 0 if "
+                           "there is none).")]
 Fiber = Annotated[float | None, doc("Fibre in g, if known.")]
 Sugar = Annotated[float | None, doc("Sugar in g, if known.")]
 Alcohol = Annotated[float | None, doc("Alcohol in g, if any.")]
 Caffeine = Annotated[float | None, doc("Caffeine in mg, if any (coffee ~ 80-100 mg/cup).")]
 Name = Annotated[str, doc("Short name of the meal, e.g. 'Overnight Oats + Kaffee'.")]
-Components = Annotated[str | None, doc("The single components with amounts, e.g. "
-                                       "'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'.")]
+
+
+def _item_text(item) -> str:
+    """One component as text: 'Haferflocken 60 g' from a food_nutrition item, else str()."""
+    if isinstance(item, dict):
+        label = item.get("name") or item.get("recipe") or item.get("food")
+        if label is None and item.get("food_id") is not None:
+            label = f"food_id {item['food_id']}"
+        if item.get("amount"):
+            amount = str(item["amount"])
+        elif item.get("grams") is not None:
+            amount = f"{item['grams']} g"
+        elif item.get("servings") is not None:
+            amount = f"{item['servings']} ×"
+        else:
+            amount = ""
+        return " ".join(str(part) for part in (label, amount) if part) or str(item)
+    return str(item).strip()
+
+
+def _components_text(value):
+    """components as one line of text, also when a model sends the list of food_nutrition
+    items (or a single item) instead of a string."""
+    if isinstance(value, dict):
+        value = [value]
+    if isinstance(value, list):
+        return ", ".join(text for text in map(_item_text, value) if text) or None
+    return value
+
+
+COMPONENTS_DOC = ("The single components with their amounts as ONE plain text (a string, not a "
+                  "list), e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. Build it from "
+                  "the items of food_nutrition: '<name> <amount>' joined by ', '.")
+Components = Annotated[
+    str | None, BeforeValidator(_components_text),
+    WithJsonSchema({"anyOf": [{"type": "string"}, {"type": "array"}, {"type": "object"},
+                              {"type": "null"}]}),
+    doc(COMPONENTS_DOC)]
 Estimated = Annotated[bool, doc("true if the values are estimated rather than taken from "
                                 "mcp-food.")]
 Notes = Annotated[str | None, doc("Free note, e.g. 'im Restaurant'.")]
@@ -46,15 +88,17 @@ def meal_log(  # pylint: disable=too-many-arguments,too-many-positional-argument
     estimated: Estimated = False,
     notes: Notes = None,
 ) -> dict:
-    """Record one meal the user reported, with the total values of the meal. Returns the
+    """Record one meal the user reported, with the total values of the meal. Required:
+    name, kcal, protein_g, carbs_g and fat_g - take all four numbers from the `total` of
+    food_nutrition (and fiber_g, sugar_g too when it has them). Returns the
     stored meal (with meal_id) and the totals of that day against the goals - enough to
     report the day's status without another call. To change a meal later use meal_update,
     not a second meal_log."""
     when = days.moment(date, time)
     row = db.insert_meal({
         "eaten_at": when, "meal_type": meal_type or days.meal_type_at(when),
-        "name": name.strip(), "components": components, "kcal": kcal, "protein_g": protein_g,
-        "carbs_g": carbs_g, "fat_g": fat_g, "fiber_g": fiber_g, "sugar_g": sugar_g,
+        "name": name.strip(), "components": _components_text(components), "kcal": kcal,
+        "protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g, "fiber_g": fiber_g, "sugar_g": sugar_g,
         "alcohol_g": alcohol_g, "caffeine_mg": caffeine_mg, "estimated": estimated,
         "notes": notes,
     })
@@ -112,7 +156,7 @@ def meal_update(  # pylint: disable=too-many-arguments,too-many-positional-argum
                              "meals of a day with their meal_id.")
     changes = {k: v for k, v in {
         "name": name, "kcal": kcal, "protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g,
-        "meal_type": meal_type, "components": components, "fiber_g": fiber_g,
+        "meal_type": meal_type, "components": _components_text(components), "fiber_g": fiber_g,
         "sugar_g": sugar_g, "alcohol_g": alcohol_g, "caffeine_mg": caffeine_mg,
         "estimated": estimated, "notes": notes}.items() if v is not None}
     if date is not None or time is not None:

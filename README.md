@@ -76,19 +76,19 @@ database.
 
 #### `meal_log`
 
-Record one meal the user reported, with the total values of the meal. Returns the stored meal (with meal_id) and the totals of that day against the goals - enough to report the day's status without another call. To change a meal later use meal_update, not a second meal_log.
+Record one meal the user reported, with the total values of the meal. Required: name, kcal, protein_g, carbs_g and fat_g - take all four numbers from the `total` of food_nutrition (and fiber_g, sugar_g too when it has them). Returns the stored meal (with meal_id) and the totals of that day against the goals - enough to report the day's status without another call. To change a meal later use meal_update, not a second meal_log.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `name` | text | yes | Short name of the meal, e.g. 'Overnight Oats + Kaffee'. |
-| `kcal` | number | yes | Energy in kcal (total of the meal; from food_nutrition's total). |
-| `protein_g` | number | yes | Protein in g (total of the meal). |
-| `carbs_g` | number | yes | Carbohydrates in g (total of the meal). |
-| `fat_g` | number | yes | Fat in g (total of the meal). |
+| `kcal` | number | yes | Required. Energy in kcal of the whole meal ('kcal' of food_nutrition's total). |
+| `protein_g` | number | yes | Required. Protein in g of the whole meal ('protein_g' of the total). |
+| `carbs_g` | number | yes | Required. Carbohydrates in g of the whole meal ('carbs_g' of the total; 0 if there are none). |
+| `fat_g` | number | yes | Required. Fat in g of the whole meal ('fat_g' of the total; 0 if there is none). |
 | `meal_type` | `breakfast` / `lunch` / `dinner` / `snack` / `drink` | no (default `none`) | Kind of meal. Default by time of day: before 10:30 breakfast, 11:00-14:30 lunch, 17:30-21:30 dinner, otherwise snack. 'drink' for drinks with energy (shake, juice, sports drink); plain water goes to water_log. |
 | `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
 | `time` | text | no (default `none`) | Time of day as 'HH:MM', e.g. '07:30'; default now (for another day than today: 12:00). |
-| `components` | text | no (default `none`) | The single components with amounts, e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. |
+| `components` | text | no (default `none`) | The single components with their amounts as ONE plain text (a string, not a list), e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. Build it from the items of food_nutrition: '<name> <amount>' joined by ', '. |
 | `fiber_g` | number | no (default `none`) | Fibre in g, if known. |
 | `sugar_g` | number | no (default `none`) | Sugar in g, if known. |
 | `alcohol_g` | number | no (default `none`) | Alcohol in g, if any. |
@@ -129,7 +129,7 @@ Correct a recorded meal: only the fields that are given change, everything else 
 | `meal_type` | `breakfast` / `lunch` / `dinner` / `snack` / `drink` | no (default `none`) | New kind of meal. |
 | `date` | text | no (default `none`) | Move the meal to this day ('YYYY-MM-DD'). |
 | `time` | text | no (default `none`) | Move the meal to this time ('HH:MM'). |
-| `components` | text | no (default `none`) | The single components with amounts, e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. |
+| `components` | text | no (default `none`) | The single components with their amounts as ONE plain text (a string, not a list), e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. Build it from the items of food_nutrition: '<name> <amount>' joined by ', '. |
 | `fiber_g` | number | no (default `none`) | Fibre in g, if known. |
 | `sugar_g` | number | no (default `none`) | Sugar in g, if known. |
 | `alcohol_g` | number | no (default `none`) | Alcohol in g, if any. |

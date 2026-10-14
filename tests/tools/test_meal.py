@@ -93,3 +93,34 @@ def test_delete_returns_meal_and_new_day_total():
     meal_id = meal_log("B", 200, 10, 10, 10)["logged"]["meal_id"]
     result = meal_delete(meal_id)
     assert result["deleted"]["name"] == "B" and result["day"]["total"]["kcal"] == 300
+
+
+def test_components_from_food_nutrition_items_become_text():
+    """A list (or one item) of food_nutrition items is stored as one line of text."""
+    items = [{"recipe": "Overnight Oats Bowl", "amount": "0.5 portion(s)", "kcal": 290},
+             {"name": "Kaffee mit Milch", "amount": "1 × 1 Tasse"},
+             {"food_id": 7, "grams": 30}, "Zimt"]
+    logged = meal_log("Oats", 300, 25, 30, 8, components=items)["logged"]
+    assert logged["components"] == ("Overnight Oats Bowl 0.5 portion(s), Kaffee mit Milch "
+                                    "1 × 1 Tasse, food_id 7 30 g, Zimt")
+    single = meal_update(logged["meal_id"], components={"recipe": "Gregors Shake",
+                                                       "servings": 1})["updated"]
+    assert single["components"] == "Gregors Shake 1 ×"
+
+
+def test_schema_allows_list_but_describes_text():
+    """The schema accepts a list as a fallback; the description asks for one string."""
+    import asyncio  # pylint: disable=import-outside-toplevel
+    from mcp import Client  # pylint: disable=import-outside-toplevel
+    import mcp_server  # pylint: disable=import-outside-toplevel
+
+    async def schema():
+        async with Client(mcp_server.server) as client:
+            tools = {t.name: t for t in (await client.list_tools()).tools}
+        return tools["meal_log"]
+
+    tool = asyncio.run(schema())
+    prop = tool.input_schema["properties"]["components"]
+    assert {"type": "array"} in prop["anyOf"] and "not a list" in prop["description"]
+    assert "Required: name, kcal, protein_g, carbs_g and fat_g" in " ".join(
+        tool.description.split())
