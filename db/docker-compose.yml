@@ -1,0 +1,22 @@
+# Postgres for mcp-nutrition (schema "nutrition") and mcp-food (schema "food").
+# Loopback only; the MCP servers connect as the role "nutrition" (see init/).
+services:
+  db:
+    image: postgres:17.11
+    container_name: nutrition-db
+    env_file: .env
+    environment:
+      POSTGRES_USER: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - nutrition-db-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nutrition"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+volumes:
+  nutrition-db-data:

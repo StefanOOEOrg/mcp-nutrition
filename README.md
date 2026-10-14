@@ -1,0 +1,217 @@
+# mcp-nutrition
+
+MCP server (stdio): the **food diary** of the Hermes profile `personal-trainer` - meals with
+their nutrition values, water, daily goals and the evaluation of days and weeks. The values of
+a meal come from [mcp-food](https://github.com/StefanOOEOrg/mcp-food) (`food_nutrition`),
+whose `total` uses the same field names as `meal_log`.
+
+Replaces the self-hosted upstream [nutrition-mcp](https://github.com/akutishevsky/nutrition-mcp)
+(TypeScript, OAuth, 36 tools; until 2026-10): 12 tools with unambiguous names, no OAuth, plain
+Postgres. Body weight is not part of it - it comes from Garmin (mcp-garmin).
+
+- [Database](#database)
+- [Setup](#setup)
+- [Development](#development)
+- [Tool reference](#tool-reference)
+
+## Database
+
+`db/` holds the Postgres container `nutrition-db` (127.0.0.1:5433) for both servers:
+schema `nutrition` (this server) and `food` (mcp-food), role and database `nutrition`.
+
+```bash
+cd db && cp .env.example .env    # fill both passwords
+sudo docker compose up -d        # first start creates role + database (init/)
+```
+
+Backup: `db/backup.sh` (pg_dump of the whole database, 14 days) runs daily at 03:15 via the
+systemd user timer `nutrition-backup.timer` of ss → `~/backups/nutrition/`.
+Restore: `sudo docker exec -i nutrition-db pg_restore -U postgres -d nutrition --clean < <dump>`.
+
+`scripts/migrate_from_nutrition_mcp.sh` copied the data of the old container `nutrition-mcp`
+once (2026-10-14: 107 meals, 15 water entries, goals, 7,323 foods, 17 recipes).
+
+## Setup
+
+```bash
+python3 -m venv venv && venv/bin/pip install -r requirements.txt
+echo 'NUTRITION_DATABASE_URL=postgresql://nutrition:<password>@127.0.0.1:5433/nutrition' > .env
+```
+
+| Variable | Meaning |
+|---|---|
+| `NUTRITION_DATABASE_URL` | libpq URL of the database |
+| `NUTRITION_TIMEZONE` | the user's time zone for "today", dates and times (default `Europe/Vienna`) |
+| `LOG_LEVEL` | default `INFO` |
+
+On the ThinkCentre it is deployed with `sudo hermes-deploy mcp-nutrition` (tc-ops
+`deploy/apps.conf`, `.env` linked from `/home/hermes/mcp-nutrition/.env`) and started by Hermes:
+
+```yaml
+mcp_servers:
+  mcp-nutrition:
+    command: /opt/hermes-apps/mcp-nutrition/current/.venv/bin/python
+    args: [/opt/hermes-apps/mcp-nutrition/current/src/main.py]
+```
+
+## Development
+
+```bash
+venv/bin/pip install -r requirements-dev.txt
+sudo docker run -d --rm --name pg-test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test \
+    -p 127.0.0.1:55432:5432 --tmpfs /var/lib/postgresql/data postgres:17.11
+venv/bin/python -m pytest          # TEST_DATABASE_URL overrides the test database
+venv/bin/pylint src tests scripts  # must stay at 10/10
+venv/bin/python scripts/tool_reference.py   # regenerate the tool reference below
+```
+
+Every test drops and recreates the schema - never point `TEST_DATABASE_URL` at the real
+database.
+
+## Tool reference
+
+<!-- tool-reference:start -->
+
+### Meal
+
+#### `meal_log`
+
+Record one meal the user reported, with the total values of the meal. Returns the stored meal (with meal_id) and the totals of that day against the goals - enough to report the day's status without another call. To change a meal later use meal_update, not a second meal_log.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `name` | text | yes | Short name of the meal, e.g. 'Overnight Oats + Kaffee'. |
+| `kcal` | number | yes | Energy in kcal (total of the meal; from food_nutrition's total). |
+| `protein_g` | number | yes | Protein in g (total of the meal). |
+| `carbs_g` | number | yes | Carbohydrates in g (total of the meal). |
+| `fat_g` | number | yes | Fat in g (total of the meal). |
+| `meal_type` | `breakfast` / `lunch` / `dinner` / `snack` / `drink` | no (default `none`) | Kind of meal. Default by time of day: before 10:30 breakfast, 11:00-14:30 lunch, 17:30-21:30 dinner, otherwise snack. 'drink' for drinks with energy (shake, juice, sports drink); plain water goes to water_log. |
+| `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
+| `time` | text | no (default `none`) | Time of day as 'HH:MM', e.g. '07:30'; default now (for another day than today: 12:00). |
+| `components` | text | no (default `none`) | The single components with amounts, e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. |
+| `fiber_g` | number | no (default `none`) | Fibre in g, if known. |
+| `sugar_g` | number | no (default `none`) | Sugar in g, if known. |
+| `alcohol_g` | number | no (default `none`) | Alcohol in g, if any. |
+| `caffeine_mg` | number | no (default `none`) | Caffeine in mg, if any (coffee ~ 80-100 mg/cup). |
+| `estimated` | yes/no | no (default `False`) | true if the values are estimated rather than taken from mcp-food. |
+| `notes` | text | no (default `none`) | Free note, e.g. 'im Restaurant'. |
+
+#### `meal_list`
+
+The meals of one day (default today) or of a range of days, in time order, each with meal_id, date, time, meal_type, name, components and values. Totals: day_summary.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
+| `end_date` | text | no (default `none`) | Last day of a range as 'YYYY-MM-DD' (inclusive); default = date (one day only). |
+
+#### `meal_search`
+
+Find earlier meals by words, newest first - e.g. to log 'the same as last Tuesday' again with the same values.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | text | yes | Words that must all appear in the name, components or notes, e.g. 'oats' or 'pizza restaurant'. |
+| `limit` | number | no (default `10`) | Maximum number of meals. |
+
+#### `meal_update`
+
+Correct a recorded meal: only the fields that are given change, everything else stays (to change the amount, give the new totals kcal, protein_g, carbs_g, fat_g). Returns the updated meal and the totals of its day.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `meal_id` | number | yes | meal_id of the meal, as meal_list, meal_search or meal_log return it. |
+| `name` | text | no (default `none`) | New name. |
+| `kcal` | number | no (default `none`) | New energy in kcal. |
+| `protein_g` | number | no (default `none`) | New protein in g. |
+| `carbs_g` | number | no (default `none`) | New carbohydrates in g. |
+| `fat_g` | number | no (default `none`) | New fat in g. |
+| `meal_type` | `breakfast` / `lunch` / `dinner` / `snack` / `drink` | no (default `none`) | New kind of meal. |
+| `date` | text | no (default `none`) | Move the meal to this day ('YYYY-MM-DD'). |
+| `time` | text | no (default `none`) | Move the meal to this time ('HH:MM'). |
+| `components` | text | no (default `none`) | The single components with amounts, e.g. 'Haferflocken 60 g, Skyr 150 g, Heidelbeeren 100 g'. |
+| `fiber_g` | number | no (default `none`) | Fibre in g, if known. |
+| `sugar_g` | number | no (default `none`) | Sugar in g, if known. |
+| `alcohol_g` | number | no (default `none`) | Alcohol in g, if any. |
+| `caffeine_mg` | number | no (default `none`) | Caffeine in mg, if any (coffee ~ 80-100 mg/cup). |
+| `estimated` | yes/no | no (default `none`) | Mark the values as estimated (true) or not (false). |
+| `notes` | text | no (default `none`) | Free note, e.g. 'im Restaurant'. |
+
+#### `meal_delete`
+
+Delete a recorded meal for good (there is no undo). Returns what was deleted and the totals of its day afterwards.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `meal_id` | number | yes | meal_id of the meal, as meal_list, meal_search or meal_log return it. |
+
+### Water
+
+#### `water_log`
+
+Record water (or other drinks without energy: tea, sparkling water) the user drank. Drinks with energy go to meal_log (meal_type 'drink'); a drink logged there can also be counted here with its volume. Returns the entry (with water_id) and the totals of the day, including water so far against the water goal.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `ml` | number | yes | Amount in millilitres, e.g. 500 (a glass ~ 250, a bottle 500-750, 1 l = 1000). |
+| `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
+| `time` | text | no (default `none`) | Time of day as 'HH:MM', e.g. '07:30'; default now (for another day than today: 12:00). |
+| `notes` | text | no (default `none`) | Free note, e.g. 'mit Elektrolyten'. |
+
+#### `water_list`
+
+The water entries of one day (default today) with water_id and time, and their sum.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
+
+#### `water_delete`
+
+Delete a water entry for good (there is no undo).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `water_id` | number | yes | water_id of the entry, as water_list or water_log return it. |
+
+### Day
+
+#### `day_summary`
+
+Totals of one day or of every day of a range: kcal, protein, carbs, fat (and fibre, sugar, alcohol, caffeine when recorded), water, number of meals - and for every goal that is set: goal, so far, left (negative = over the goal). The meals themselves: meal_list.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `date` | text | no (default `none`) | Day as 'YYYY-MM-DD' in the user's time zone; default today. |
+| `end_date` | text | no (default `none`) | Last day of a range as 'YYYY-MM-DD' (inclusive); default = date (one day only). |
+
+#### `trend_get`
+
+Averages over the last 7, 14 or 30 complete days (ending yesterday), counted over the days with at least one logged meal; with the number of such days, the goals and the lowest/highest kcal day. For one day or a short range use day_summary.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `days_back` | `7` / `14` / `30` | no (default `7`) | Length of the window in days, ending yesterday (today is still incomplete). |
+
+### Goals
+
+#### `goals_get`
+
+The user's daily goals; a goal that is not set is null.
+
+#### `goals_set`
+
+Change daily goals - only when the user asks for it. Only the given goals change; `clear` removes goals. Returns all goals afterwards.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `kcal` | number | no (default `none`) | Daily energy goal in kcal. |
+| `protein_g` | number | no (default `none`) | Daily protein goal in g (a minimum). |
+| `carbs_g` | number | no (default `none`) | Daily carbohydrate goal in g. |
+| `fat_g` | number | no (default `none`) | Daily fat goal in g. |
+| `fiber_g` | number | no (default `none`) | Daily fibre goal in g (a minimum). |
+| `sugar_g` | number | no (default `none`) | Daily sugar limit in g. |
+| `water_ml` | number | no (default `none`) | Daily water goal in ml. |
+| `clear` | list | no (default `none`) | Names of goals to remove, e.g. ['carbs_g']. |
+
+<!-- tool-reference:end -->
