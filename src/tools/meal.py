@@ -98,9 +98,9 @@ def meal_log(  # pylint: disable=too-many-arguments,too-many-positional-argument
     row = db.insert_meal({
         "eaten_at": when, "meal_type": meal_type or days.meal_type_at(when),
         "name": name.strip(), "components": _components_text(components), "kcal": kcal,
-        "protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g, "fiber_g": fiber_g, "sugar_g": sugar_g,
-        "alcohol_g": alcohol_g, "caffeine_mg": caffeine_mg, "estimated": estimated,
-        "notes": notes,
+        "protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g, "fiber_g": fiber_g,
+        "sugar_g": sugar_g, "alcohol_g": alcohol_g, "caffeine_mg": caffeine_mg,
+        "estimated": estimated, "notes": notes,
     })
     return {"logged": days.meal_view(row), "day": day_status(when.date())}
 
