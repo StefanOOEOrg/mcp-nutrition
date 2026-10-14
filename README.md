@@ -29,7 +29,7 @@ systemd user timer `nutrition-backup.timer` of ss → `~/backups/nutrition/`.
 Restore: `sudo docker exec -i nutrition-db pg_restore -U postgres -d nutrition --clean < <dump>`.
 
 `scripts/migrate_from_nutrition_mcp.sh` copied the data of the old container `nutrition-mcp`
-once (2026-10-14: 107 meals, 15 water entries, goals, 7,323 foods, 17 recipes).
+once (2026-10-14). Kept: goals, 7,323 foods, 17 recipes; the copied meal and water logs were deleted afterwards (the diary starts empty).
 
 ## Setup
 
