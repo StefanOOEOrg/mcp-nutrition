@@ -15,8 +15,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # === DATABASE ===
 # libpq connection string of the Postgres database that holds the schema "nutrition", e.g.
-# postgresql://nutrition:<password>@127.0.0.1:5433/nutrition. Kept in the .env of the deployed
-# release (linked from /home/hermes/mcp-nutrition/.env).
+# postgresql://nutrition:<password>@127.0.0.1:5433/nutrition. Kept in the .env next to the
+# release.
 DATABASE_URL = os.getenv("NUTRITION_DATABASE_URL", "")
 
 # === TIME ===

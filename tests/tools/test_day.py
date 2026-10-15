@@ -26,8 +26,8 @@ def test_summary_of_range_includes_empty_days_and_estimates():
 
 def test_day_boundaries_follow_the_time_zone():
     """23:30 local time still belongs to that day (not to the UTC day)."""
-    meal_log("Spät", 300, 10, 30, 10, date=dt.date(2026, 10, 12), time="23:30")
-    meal_log("Früh", 200, 10, 20, 5, date=dt.date(2026, 10, 13), time="00:30")
+    meal_log("Late", 300, 10, 30, 10, date=dt.date(2026, 10, 12), time="23:30")
+    meal_log("Early", 200, 10, 20, 5, date=dt.date(2026, 10, 13), time="00:30")
     totals = [d["total"]["kcal"] for d in day_summary(dt.date(2026, 10, 12),
                                                       dt.date(2026, 10, 13))]
     assert totals == [300, 200]

@@ -44,14 +44,13 @@ echo 'NUTRITION_DATABASE_URL=postgresql://nutrition:<password>@127.0.0.1:5433/nu
 | `NUTRITION_TIMEZONE` | the user's time zone for "today", dates and times (default `Europe/Vienna`) |
 | `LOG_LEVEL` | default `INFO` |
 
-On the ThinkCentre it is deployed with `sudo hermes-deploy mcp-nutrition` (tc-ops
-`deploy/apps.conf`, `.env` linked from `/home/hermes/mcp-nutrition/.env`) and started by Hermes:
+Install it with its own venv and `.env` and add it to Hermes' `config.yaml`:
 
 ```yaml
 mcp_servers:
   mcp-nutrition:
-    command: /opt/hermes-apps/mcp-nutrition/current/.venv/bin/python
-    args: [/opt/hermes-apps/mcp-nutrition/current/src/main.py]
+    command: /path/to/mcp-nutrition/.venv/bin/python
+    args: [/path/to/mcp-nutrition/src/main.py]
 ```
 
 ## Development
