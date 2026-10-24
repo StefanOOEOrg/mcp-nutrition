@@ -1,7 +1,9 @@
 # mcp-nutrition
 
-MCP server (stdio): the **food diary** of the Hermes profile `personal-trainer` - meals with
-their nutrition values, water, daily goals and the evaluation of days and weeks. The values of
+[![CI](https://github.com/StefanOOEOrg/mcp-nutrition/actions/workflows/ci.yml/badge.svg)](https://github.com/StefanOOEOrg/mcp-nutrition/actions/workflows/ci.yml)
+
+MCP server (stdio) for a **food diary** - meals with their nutrition values, water, daily goals
+and the evaluation of days and weeks. The values of
 a meal come from [mcp-food](https://github.com/StefanOOEOrg/mcp-food) (`food_nutrition`),
 whose `total` uses the same field names as `meal_log`.
 
@@ -9,10 +11,20 @@ Replaces the self-hosted upstream [nutrition-mcp](https://github.com/akutishevsk
 (TypeScript, OAuth, 36 tools; until 2026-10): 12 tools with unambiguous names, no OAuth, plain
 Postgres. Body weight is not part of it - it comes from Garmin (mcp-garmin).
 
+- [Requirements](#requirements)
 - [Database](#database)
 - [Setup](#setup)
+- [Project structure](#project-structure)
 - [Development](#development)
+- [Scope / Limitations](#scope--limitations)
 - [Tool reference](#tool-reference)
+
+## Requirements
+
+- **Python 3.11 or newer** — the pinned dependencies require it; the CI runs 3.11 and 3.14.
+- **Postgres 17** with the `nutrition` schema (this server) and the `food` schema (mcp-food). The `db/`
+  folder ships the container, the init script and a backup script.
+- Nothing else: no account, no API key, no open port — an MCP server over stdio for a local client.
 
 ## Database
 
@@ -53,6 +65,31 @@ mcp_servers:
     args: [/path/to/mcp-nutrition/src/main.py]
 ```
 
+## Project structure
+
+```
+mcp-nutrition/
+├── src/
+│   ├── config.py            # NUTRITION_* / LOG_LEVEL from the environment
+│   ├── db.py                # connection handling + schema init
+│   ├── days.py              # day and week boundaries in the configured time zone
+│   ├── main.py              # entry point (stdio)
+│   ├── mcp_server.py        # composition root: server + tools
+│   ├── schema.sql           # the `nutrition` schema
+│   ├── server_instance.py   # the shared MCP server instance
+│   └── tools/               # meal, water, day, goals + _shared helpers
+├── tests/                   # run against a throwaway Postgres (TEST_DATABASE_URL)
+├── db/                      # docker-compose, init script, backup.sh, db/.env.example
+├── scripts/                 # one-off migration + tool_reference.py
+├── .github/workflows/ci.yml # pytest against a Postgres service + pylint, on 3.11 and 3.14
+├── .env.example             # copy to .env
+├── .pylintrc
+├── pytest.ini
+├── requirements.txt / requirements-dev.txt
+├── LICENSE
+└── README.md
+```
+
 ## Development
 
 ```bash
@@ -66,6 +103,19 @@ venv/bin/python scripts/tool_reference.py   # regenerate the tool reference belo
 
 Every test drops and recreates the schema - never point `TEST_DATABASE_URL` at the real
 database.
+
+## Scope / Limitations
+
+- A single-user tool, not a service: it runs locally over stdio — no port of its own, no
+  authentication, no multi-user support.
+- It needs the Postgres container; without it every tool fails with a readable error, and the tests
+  skip locally (in CI they fail instead, via `TEST_REQUIRE_DB=1`).
+- Nutrition values come from mcp-food; this server stores and aggregates them, it does not carry the
+  food database itself.
+- The database holds personal data (meals, water, goals). Back it up (`db/backup.sh`) and keep `.env`
+  out of the repo.
+- The schema is created from `src/schema.sql`; changes there are one-way — there is no migration
+  framework.
 
 ## Tool reference
 
@@ -214,3 +264,7 @@ Change daily goals - only when the user asks for it. Only the given goals change
 | `clear` | list | no (default `none`) | Names of goals to remove, e.g. ['carbs_g']. |
 
 <!-- tool-reference:end -->
+
+## License
+
+[MIT](LICENSE)
