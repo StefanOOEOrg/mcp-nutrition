@@ -1,6 +1,7 @@
 # mcp-nutrition
 
 [![CI](https://github.com/StefanOOEOrg/mcp-nutrition/actions/workflows/ci.yml/badge.svg)](https://github.com/StefanOOEOrg/mcp-nutrition/actions/workflows/ci.yml)
+[![M8ven Verified](https://m8ven.ai/badge/mcp/stefanooeorg-mcp-nutrition-18sq6o?variant=verified)](https://m8ven.ai/mcp/stefanooeorg-mcp-nutrition-18sq6o)
 
 MCP server (stdio) for a **food diary** - meals with their nutrition values, water, daily goals
 and the evaluation of days and weeks. The values of
