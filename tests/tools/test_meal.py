@@ -110,9 +110,11 @@ def test_components_from_food_nutrition_items_become_text():
 
 def test_schema_allows_list_but_describes_text():
     """The schema accepts a list as a fallback; the description asks for one string."""
-    import asyncio  # pylint: disable=import-outside-toplevel
-    from mcp import Client  # pylint: disable=import-outside-toplevel
-    import mcp_server  # pylint: disable=import-outside-toplevel
+    import asyncio
+
+    from mcp import Client
+
+    import mcp_server
 
     async def schema():
         async with Client(mcp_server.server) as client:

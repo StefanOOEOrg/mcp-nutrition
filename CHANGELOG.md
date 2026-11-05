@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Tooling: ruff (`E`, `F`, `I`, `UP`, `B`; line length 100, Python 3.11 target) replaces the previous
+  linter; the rule set lives in `pyproject.toml` and CI runs it on every Python version of the matrix.
+
 ## 0.1.0 — 2026-10-24
 
 Initial release.
@@ -15,5 +20,5 @@ Initial release.
   live in `db/`.
 - Local MCP server over stdio; configuration via `.env` (`NUTRITION_DATABASE_URL`,
   `NUTRITION_TIMEZONE`, `LOG_LEVEL`); `.env.example` ships the template.
-- CI: pytest against a Postgres service plus pylint on Python 3.11 and 3.14 — the run fails when the
-  database is unreachable instead of silently skipping.
+- CI: pytest against a Postgres service plus a lint step on Python 3.11 and 3.14 — the run fails when
+  the database is unreachable instead of silently skipping.

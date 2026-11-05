@@ -2,8 +2,8 @@
 import datetime as dt
 from typing import Annotated, Literal
 
-import db
 import days
+import db
 from tools._shared import Date, EndDate, doc, nutrition_tool
 
 
