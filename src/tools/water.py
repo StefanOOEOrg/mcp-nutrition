@@ -1,8 +1,8 @@
 """Water tools: record, list and delete what the user drank."""
 from typing import Annotated
 
-import db
 import days
+import db
 from days import NutritionError
 from tools._shared import Date, Time, WaterId, doc, nutrition_tool
 from tools.day import day_status

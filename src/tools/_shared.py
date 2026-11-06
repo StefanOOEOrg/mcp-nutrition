@@ -1,7 +1,8 @@
 """Shared parameter types and the tool decorator for the nutrition tools."""
 import datetime as dt
 import functools
-from typing import Annotated, Callable
+from collections.abc import Callable
+from typing import Annotated
 
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field

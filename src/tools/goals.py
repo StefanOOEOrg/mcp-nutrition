@@ -28,7 +28,7 @@ def goals_get() -> dict:
 
 
 @nutrition_tool
-def goals_set(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def goals_set(
     kcal: Annotated[float | None, doc(GOALS_DOC["kcal"])] = None,
     protein_g: Annotated[float | None, doc(GOALS_DOC["protein_g"])] = None,
     carbs_g: Annotated[float | None, doc(GOALS_DOC["carbs_g"])] = None,

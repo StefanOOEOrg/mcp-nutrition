@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, WithJsonSchema
 
-import db
 import days
+import db
 from days import NutritionError
 from tools._shared import Date, EndDate, MealId, Time, doc, nutrition_tool
 from tools.day import day_status
@@ -68,7 +68,7 @@ Notes = Annotated[str | None, doc("Free note, e.g. 'im Restaurant'.")]
 
 
 @nutrition_tool
-def meal_log(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def meal_log(
     name: Name,
     kcal: Kcal,
     protein_g: Protein,
@@ -128,7 +128,7 @@ def meal_search(
 
 
 @nutrition_tool
-def meal_update(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def meal_update(
     meal_id: MealId,
     name: Annotated[str | None, doc("New name.")] = None,
     kcal: Annotated[float | None, doc("New energy in kcal.")] = None,
